@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAdmin } from "./context/AdminContext";
 
-export default function GameSummaryPage() {
+export default function HomePage() {
   const { isAdmin } = useAdmin();
 
   const [latestGame, setLatestGame] = useState(
