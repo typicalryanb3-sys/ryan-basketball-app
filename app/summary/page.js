@@ -26,7 +26,7 @@ export default function GameSummaryPage() {
       <h2 style={{ display: "flex", alignItems: "center" }}>
         {title}
 
-        {adminMode && editingSection !== key && (
+        {isAdmin && editingSection !== key && (
           <button
             onClick={() => setEditingSection(key)}
             style={{ marginLeft: 15 }}
