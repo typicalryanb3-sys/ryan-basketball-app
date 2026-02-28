@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAdmin } from "../../context/AdminContext";
+import { useAdmin } from "./context/AdminContext";
 
 export default function GameSummaryPage() {
   const { adminMode } = useAdmin();
