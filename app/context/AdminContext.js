@@ -2,7 +2,11 @@
 
 import { createContext, useContext, useState } from "react";
 
-const AdminContext = createContext();
+const AdminContext = createContext({
+  isAdmin: false,
+  login: () => {},
+  logout: () => {}
+});
 
 export function AdminProvider({ children }) {
   const [isAdmin, setIsAdmin] = useState(false);
