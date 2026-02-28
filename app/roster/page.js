@@ -25,17 +25,21 @@ export default function Roster() {
 
       <h2>🏀 Starting 5</h2>
       {starters.map((player) => (
-        <div key={player.number} style={{ marginBottom: 8 }}>
-          #{player.number} - {player.name} ({player.position})
-        </div>
-      ))}
+  <div key={player.number} style={{ marginBottom: 8 }}>
+    <Link href={`/roster/${player.number}`}>
+      #{player.number} - {player.name} ({player.position})
+    </Link>
+  </div>
+))}
 
       <h2 style={{ marginTop: 20 }}>Bench</h2>
-      {bench.map((player) => (
-        <div key={player.number} style={{ marginBottom: 8 }}>
-          #{player.number} - {player.name} ({player.position})
-        </div>
-      ))}
+    {bench.map((player) => (
+  <div key={player.number} style={{ marginBottom: 8 }}>
+    <Link href={`/roster/${player.number}`}>
+      #{player.number} - {player.name} ({player.position})
+    </Link>
+  </div>
+))}
     </div>
   );
 }
