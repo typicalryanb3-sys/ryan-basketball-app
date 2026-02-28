@@ -1,4 +1,4 @@
-import { AdminProvider } from "../../context/AdminContext";
+import { AdminProvider } from "./context/AdminContext";
 import LayoutClient from "./components/LayoutClient";
 
 export const metadata = {
