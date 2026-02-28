@@ -1,3 +1,4 @@
+import Link from "next/link";
 export default function Roster() {
   const starters = [
     { name: "Brody Ludwig", number: 30, position: "PG" },
