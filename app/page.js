@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAdmin } from "./context/AdminContext";
 
 export default function GameSummaryPage() {
-  const { adminMode } = useAdmin();
+  const { isAdmin } = useAdmin();
 
   const [latestGame, setLatestGame] = useState(
     "Add your full team game summary here."
@@ -26,7 +26,7 @@ export default function GameSummaryPage() {
       <h2 style={{ display: "flex", alignItems: "center" }}>
         {title}
 
-        {adminMode && editingSection !== key && (
+     {isAdmin && editingSection !== key && (
           <button
             onClick={() => setEditingSection(key)}
             style={{ marginLeft: 15 }}
