@@ -7,7 +7,6 @@ const AdminContext = createContext({
   login: () => {},
   logout: () => {}
 });
-
 export function AdminProvider({ children }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
