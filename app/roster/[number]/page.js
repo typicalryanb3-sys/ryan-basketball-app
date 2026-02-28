@@ -1,3 +1,4 @@
+import Link from "next/link";
 const players = [
   { name: "Brody Ludwig", number: 30, position: "PG" },
   { name: "Kaden Dorshner", number: 34, position: "SF" },
