@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAdmin } from "../../context/AdminContext";
 
 export default function GameSummaryPage() {
-  const { adminMode } = useAdmin();
+  const { isAdmin } = useAdmin();
 
   const [latestGame, setLatestGame] = useState(
     "Add your full team game summary here."
