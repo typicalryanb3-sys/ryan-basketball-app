@@ -1,64 +1,51 @@
 "use client";
 
 import { useState } from "react";
+import { useAdmin } from "../../context/AdminContext";
 
 export default function GameSummaryPage() {
-  const [adminMode, setAdminMode] = useState(false);
-  const [latestGame, setLatestGame] = useState("Add your full team game summary here.");
-  const [injuries, setInjuries] = useState("Add team injury updates here.");
+  const { adminMode } = useAdmin();
 
-  const handleAdminLogin = () => {
-    const password = prompt("Enter admin password:");
-    if (password === "Harley123") {
-      setAdminMode(true);
-    } else {
-      alert("Incorrect password.");
-    }
-  };
+  const [latestGame, setLatestGame] = useState(
+    "Add your full team game summary here."
+  );
+  const [editingLatest, setEditingLatest] = useState(false);
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Game Summaries & Updates</h1>
 
-      {!adminMode && (
-        <button onClick={handleAdminLogin} style={{ marginBottom: 20 }}>
-          Enter Admin Mode
-        </button>
-      )}
+      <section style={{ marginTop: 30 }}>
+        <h2 style={{ display: "flex", alignItems: "center" }}>
+          🏀 Latest Game Recap
 
-      {adminMode && (
-        <p style={{ color: "green", marginBottom: 20 }}>
-          Admin Mode Active
-        </p>
-      )}
+          {adminMode && !editingLatest && (
+            <button
+              onClick={() => setEditingLatest(true)}
+              style={{ marginLeft: 15 }}
+            >
+              Edit
+            </button>
+          )}
+        </h2>
 
-      <section style={{ marginTop: 20 }}>
-        <h2>🏀 Latest Game Recap</h2>
-
-        {adminMode ? (
-          <textarea
-            value={latestGame}
-            onChange={(e) => setLatestGame(e.target.value)}
-            rows={4}
-            style={{ width: "100%" }}
-          />
+        {editingLatest ? (
+          <>
+            <textarea
+              value={latestGame}
+              onChange={(e) => setLatestGame(e.target.value)}
+              rows={4}
+              style={{ width: "100%" }}
+            />
+            <button
+              onClick={() => setEditingLatest(false)}
+              style={{ marginTop: 10 }}
+            >
+              Save
+            </button>
+          </>
         ) : (
           <p>{latestGame}</p>
-        )}
-      </section>
-
-      <section style={{ marginTop: 30 }}>
-        <h2>🚑 Injury Updates</h2>
-
-        {adminMode ? (
-          <textarea
-            value={injuries}
-            onChange={(e) => setInjuries(e.target.value)}
-            rows={3}
-            style={{ width: "100%" }}
-          />
-        ) : (
-          <p>{injuries}</p>
         )}
       </section>
     </div>
