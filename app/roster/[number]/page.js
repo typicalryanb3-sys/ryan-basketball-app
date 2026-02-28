@@ -26,6 +26,7 @@ export default function PlayerPage({ params }) {
 
   return (
     <div style={{ padding: 20 }}>
+    <Link href="/roster">← Back to Roster</Link>
       <h1>{player.name}</h1>
       <h2>#{player.number} • {player.position}</h2>
     </div>
