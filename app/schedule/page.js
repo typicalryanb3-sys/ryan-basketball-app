@@ -1,17 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdmin } from "../context/AdminContext";
 
 export default function SchedulePage() {
   const { isAdmin } = useAdmin();
 
-  const [games, setGames] = useState([
-    { opponent: "Team A", date: "Jan 10", location: "Home" },
-    { opponent: "Team B", date: "Jan 15", location: "Away" },
-  ]);
+  const [games, setGames] = useState([]);
 
-  const [editingIndex, setEditingIndex] = useState(null);
+  // Load saved schedule
+  useEffect(() => {
+    const saved = localStorage.getItem("games");
+    if (saved) {
+      setGames(JSON.parse(saved));
+    } else {
+      setGames([
+        { opponent: "Team A", date: "Jan 10", location: "Home" },
+        { opponent: "Team B", date: "Jan 15", location: "Away" }
+      ]);
+    }
+  }, []);
+
+  // Save schedule
+  useEffect(() => {
+    localStorage.setItem("games", JSON.stringify(games));
+  }, [games]);
+
+  const updateGame = (index, field, value) => {
+    const updated = [...games];
+    updated[index][field] = value;
+    setGames(updated);
+  };
 
   return (
     <div style={{ padding: 20 }}>
@@ -19,62 +38,34 @@ export default function SchedulePage() {
 
       {games.map((game, index) => (
         <div key={index} style={{ marginBottom: 20 }}>
-          {editingIndex === index ? (
+          {isAdmin ? (
             <>
               <input
                 value={game.opponent}
-                onChange={(e) => {
-                  const updated = [...games];
-                  updated[index].opponent = e.target.value;
-                  setGames(updated);
-                }}
+                onChange={(e) =>
+                  updateGame(index, "opponent", e.target.value)
+                }
               />
               <input
                 value={game.date}
-                onChange={(e) => {
-                  const updated = [...games];
-                  updated[index].date = e.target.value;
-                  setGames(updated);
-                }}
+                onChange={(e) =>
+                  updateGame(index, "date", e.target.value)
+                }
               />
               <input
                 value={game.location}
-                onChange={(e) => {
-                  const updated = [...games];
-                  updated[index].location = e.target.value;
-                  setGames(updated);
-                }}
+                onChange={(e) =>
+                  updateGame(index, "location", e.target.value)
+                }
               />
-              <button onClick={() => setEditingIndex(null)}>Save</button>
             </>
           ) : (
-            <>
-              <p>
-                {game.date} – {game.opponent} ({game.location})
-              </p>
-
-              {isAdmin && (
-                <button onClick={() => setEditingIndex(index)}>
-                  Edit
-                </button>
-              )}
-            </>
+            <p>
+              {game.opponent} - {game.date} ({game.location})
+            </p>
           )}
         </div>
       ))}
-
-      {isAdmin && (
-        <button
-          onClick={() =>
-            setGames([
-              ...games,
-              { opponent: "New Team", date: "TBD", location: "TBD" },
-            ])
-          }
-        >
-          Add Game
-        </button>
-      )}
     </div>
   );
 }
