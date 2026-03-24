@@ -1,70 +1,105 @@
 "use client";
 
-import { useState } from "react";
-import { useAdmin } from "../../context/AdminContext";
+import { useState, useEffect } from "react";
+import { useAdmin } from "../context/AdminContext";
 
 export default function GameSummaryPage() {
   const { isAdmin } = useAdmin();
 
-  const [latestGame, setLatestGame] = useState(
-    "Add your full team game summary here."
-  );
-  const [teamPerformance, setTeamPerformance] = useState(
-    "Add overall team performance notes here."
-  );
-  const [injuries, setInjuries] = useState(
-    "Add team injury updates here."
-  );
-  const [announcements, setAnnouncements] = useState(
-    "Add announcements here."
-  );
+  const [latestGame, setLatestGame] = useState("");
+  const [teamPerformance, setTeamPerformance] = useState("");
+  const [injuries, setInjuries] = useState("");
+  const [announcements, setAnnouncements] = useState("");
 
-  const [editingSection, setEditingSection] = useState(null);
+  useEffect(() => {
+    const savedLatestGame = localStorage.getItem("summary-latestGame");
+    const savedTeamPerformance = localStorage.getItem("summary-teamPerformance");
+    const savedInjuries = localStorage.getItem("summary-injuries");
+    const savedAnnouncements = localStorage.getItem("summary-announcements");
 
-  const renderSection = (title, value, setValue, key) => (
-    <section style={{ marginTop: 30 }}>
-      <h2 style={{ display: "flex", alignItems: "center" }}>
-        {title}
+    if (savedLatestGame) setLatestGame(savedLatestGame);
+    if (savedTeamPerformance) setTeamPerformance(savedTeamPerformance);
+    if (savedInjuries) setInjuries(savedInjuries);
+    if (savedAnnouncements) setAnnouncements(savedAnnouncements);
+  }, []);
 
-        {isAdmin && editingSection !== key && (
-          <button
-            onClick={() => setEditingSection(key)}
-            style={{ marginLeft: 15 }}
-          >
-            Edit
-          </button>
-        )}
-      </h2>
-
-      {editingSection === key ? (
-        <>
-          <textarea
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            rows={4}
-            style={{ width: "100%" }}
-          />
-          <button
-            onClick={() => setEditingSection(null)}
-            style={{ marginTop: 10 }}
-          >
-            Save
-          </button>
-        </>
-      ) : (
-        <p>{value}</p>
-      )}
-    </section>
-  );
+  const saveAll = () => {
+    localStorage.setItem("summary-latestGame", latestGame);
+    localStorage.setItem("summary-teamPerformance", teamPerformance);
+    localStorage.setItem("summary-injuries", injuries);
+    localStorage.setItem("summary-announcements", announcements);
+    alert("Game Summary saved!");
+  };
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Game Summaries & Updates</h1>
 
-      {renderSection("🏀 Latest Game Recap", latestGame, setLatestGame, "latest")}
-      {renderSection("📊 Team Performance", teamPerformance, setTeamPerformance, "performance")}
-      {renderSection("🚑 Injury Updates", injuries, setInjuries, "injuries")}
-      {renderSection("📢 Announcements", announcements, setAnnouncements, "announcements")}
+      <section style={{ marginTop: 30 }}>
+        <h2>🏀 Latest Game Recap</h2>
+        {isAdmin ? (
+          <textarea
+            value={latestGame}
+            onChange={(e) => setLatestGame(e.target.value)}
+            rows={4}
+            style={{ width: "100%" }}
+            placeholder="Add your latest game recap here"
+          />
+        ) : (
+          <p>{latestGame || "No game recap yet."}</p>
+        )}
+      </section>
+
+      <section style={{ marginTop: 30 }}>
+        <h2>📊 Team Performance</h2>
+        {isAdmin ? (
+          <textarea
+            value={teamPerformance}
+            onChange={(e) => setTeamPerformance(e.target.value)}
+            rows={4}
+            style={{ width: "100%" }}
+            placeholder="Add team performance notes here"
+          />
+        ) : (
+          <p>{teamPerformance || "No team performance updates yet."}</p>
+        )}
+      </section>
+
+      <section style={{ marginTop: 30 }}>
+        <h2>🚑 Injury Updates</h2>
+        {isAdmin ? (
+          <textarea
+            value={injuries}
+            onChange={(e) => setInjuries(e.target.value)}
+            rows={4}
+            style={{ width: "100%" }}
+            placeholder="Add injury updates here"
+          />
+        ) : (
+          <p>{injuries || "No injury updates yet."}</p>
+        )}
+      </section>
+
+      <section style={{ marginTop: 30 }}>
+        <h2>📢 Announcements</h2>
+        {isAdmin ? (
+          <textarea
+            value={announcements}
+            onChange={(e) => setAnnouncements(e.target.value)}
+            rows={4}
+            style={{ width: "100%" }}
+            placeholder="Add announcements here"
+          />
+        ) : (
+          <p>{announcements || "No announcements yet."}</p>
+        )}
+      </section>
+
+      {isAdmin && (
+        <button onClick={saveAll} style={{ marginTop: 20 }}>
+          Save Game Summary
+        </button>
+      )}
     </div>
   );
 }
