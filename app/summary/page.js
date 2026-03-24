@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useAdmin } from "../context/AdminContext";
+import { db } from "../firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export default function GameSummaryPage() {
   const { isAdmin } = useAdmin();
@@ -10,33 +12,57 @@ export default function GameSummaryPage() {
   const [teamPerformance, setTeamPerformance] = useState("");
   const [injuries, setInjuries] = useState("");
   const [announcements, setAnnouncements] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedLatestGame = localStorage.getItem("summary-latestGame");
-    const savedTeamPerformance = localStorage.getItem("summary-teamPerformance");
-    const savedInjuries = localStorage.getItem("summary-injuries");
-    const savedAnnouncements = localStorage.getItem("summary-announcements");
+    async function loadSummary() {
+      try {
+        const docRef = doc(db, "gameSummary", "main");
+        const docSnap = await getDoc(docRef);
 
-    if (savedLatestGame) setLatestGame(savedLatestGame);
-    if (savedTeamPerformance) setTeamPerformance(savedTeamPerformance);
-    if (savedInjuries) setInjuries(savedInjuries);
-    if (savedAnnouncements) setAnnouncements(savedAnnouncements);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setLatestGame(data.latestGame || "");
+          setTeamPerformance(data.teamPerformance || "");
+          setInjuries(data.injuries || "");
+          setAnnouncements(data.announcements || "");
+        }
+      } catch (error) {
+        console.error("Error loading summary:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadSummary();
   }, []);
 
-  const saveAll = () => {
-    localStorage.setItem("summary-latestGame", latestGame);
-    localStorage.setItem("summary-teamPerformance", teamPerformance);
-    localStorage.setItem("summary-injuries", injuries);
-    localStorage.setItem("summary-announcements", announcements);
-    alert("Game Summary saved!");
+  const saveAll = async () => {
+    try {
+      await setDoc(doc(db, "gameSummary", "main"), {
+        latestGame,
+        teamPerformance,
+        injuries,
+        announcements,
+      });
+
+      alert("Game Summary saved!");
+    } catch (error) {
+      console.error("Error saving summary:", error);
+      alert("Failed to save summary.");
+    }
   };
+
+  if (loading) {
+    return <div style={{ padding: 20 }}>Loading...</div>;
+  }
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Game Summaries & Updates</h1>
 
       <section style={{ marginTop: 30 }}>
-        <h2>🏀 Latest Game Recap</h2>
+        <h2>Latest Game Recap</h2>
         {isAdmin ? (
           <textarea
             value={latestGame}
@@ -51,7 +77,7 @@ export default function GameSummaryPage() {
       </section>
 
       <section style={{ marginTop: 30 }}>
-        <h2>📊 Team Performance</h2>
+        <h2>Team Performance</h2>
         {isAdmin ? (
           <textarea
             value={teamPerformance}
@@ -66,7 +92,7 @@ export default function GameSummaryPage() {
       </section>
 
       <section style={{ marginTop: 30 }}>
-        <h2>🚑 Injury Updates</h2>
+        <h2>Injury Updates</h2>
         {isAdmin ? (
           <textarea
             value={injuries}
@@ -81,7 +107,7 @@ export default function GameSummaryPage() {
       </section>
 
       <section style={{ marginTop: 30 }}>
-        <h2>📢 Announcements</h2>
+        <h2>Announcements</h2>
         {isAdmin ? (
           <textarea
             value={announcements}
