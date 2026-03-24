@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAdmin } from "../../../context/AdminContext";
 
 export default function PlayerStatsPage({ params }) {
   const { number } = params;
-  const { isAdmin } = useAdmin();
 
   const [stats, setStats] = useState({
     ppg: "",
@@ -13,16 +11,19 @@ export default function PlayerStatsPage({ params }) {
     apg: "",
   });
 
+  // Load saved stats
   useEffect(() => {
-    const savedStats = localStorage.getItem(`player-stats-${number}`);
-    if (savedStats) {
-      setStats(JSON.parse(savedStats));
+    const saved = localStorage.getItem(`stats-${number}`);
+    if (saved) {
+      setStats(JSON.parse(saved));
     }
   }, [number]);
 
-  useEffect(() => {
-    localStorage.setItem(`player-stats-${number}`, JSON.stringify(stats));
-  }, [stats, number]);
+  // Save stats
+  const saveStats = () => {
+    localStorage.setItem(`stats-${number}`, JSON.stringify(stats));
+    alert("Stats saved!");
+  };
 
   return (
     <div style={{ padding: 20 }}>
@@ -30,46 +31,40 @@ export default function PlayerStatsPage({ params }) {
       <h2>Jersey #{number}</h2>
 
       <div style={{ marginTop: 20 }}>
-        {isAdmin ? (
-          <>
-            <div style={{ marginBottom: 10 }}>
-              <label>PPG: </label>
-              <input
-                value={stats.ppg}
-                onChange={(e) =>
-                  setStats({ ...stats, ppg: e.target.value })
-                }
-              />
-            </div>
+        <div>
+          <label>PPG: </label>
+          <input
+            value={stats.ppg}
+            onChange={(e) =>
+              setStats({ ...stats, ppg: e.target.value })
+            }
+          />
+        </div>
 
-            <div style={{ marginBottom: 10 }}>
-              <label>RPG: </label>
-              <input
-                value={stats.rpg}
-                onChange={(e) =>
-                  setStats({ ...stats, rpg: e.target.value })
-                }
-              />
-            </div>
+        <div>
+          <label>RPG: </label>
+          <input
+            value={stats.rpg}
+            onChange={(e) =>
+              setStats({ ...stats, rpg: e.target.value })
+            }
+          />
+        </div>
 
-            <div style={{ marginBottom: 10 }}>
-              <label>APG: </label>
-              <input
-                value={stats.apg}
-                onChange={(e) =>
-                  setStats({ ...stats, apg: e.target.value })
-                }
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            <p>PPG: {stats.ppg || "N/A"}</p>
-            <p>RPG: {stats.rpg || "N/A"}</p>
-            <p>APG: {stats.apg || "N/A"}</p>
-          </>
-        )}
+        <div>
+          <label>APG: </label>
+          <input
+            value={stats.apg}
+            onChange={(e) =>
+              setStats({ ...stats, apg: e.target.value })
+            }
+          />
+        </div>
       </div>
+
+      <button onClick={saveStats} style={{ marginTop: 20 }}>
+        Save Stats
+      </button>
     </div>
   );
 }
