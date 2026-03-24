@@ -1,10 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useAdmin } from "../../context/AdminContext";
+import { useAdmin } from "../context/AdminContext";
 
 export default function LayoutClient({ children }) {
-  const { adminMode, toggleAdmin } = useAdmin();
+  const { isAdmin, login, logout } = useAdmin();
+
+  const handleAdminClick = () => {
+    if (isAdmin) {
+      logout();
+    } else {
+      const password = prompt("Enter admin password");
+      if (password !== null) {
+        login(password);
+      }
+    }
+  };
 
   return (
     <>
@@ -20,28 +31,31 @@ export default function LayoutClient({ children }) {
         <Link href="/" style={{ marginRight: 20 }}>
           Home
         </Link>
+
         <Link href="/roster" style={{ marginRight: 20 }}>
           Roster
         </Link>
+
         <Link href="/summary" style={{ marginRight: 20 }}>
           Game Summary
         </Link>
+
         <Link href="/schedule" style={{ marginRight: 20 }}>
           Game Schedule
         </Link>
 
         <button
-          onClick={toggleAdmin}
+          onClick={handleAdminClick}
           style={{
             marginLeft: "auto",
-            background: adminMode ? "green" : "gray",
+            background: isAdmin ? "green" : "gray",
             color: "white",
             border: "none",
             padding: "6px 12px",
             cursor: "pointer",
           }}
         >
-          {adminMode ? "Exit Admin" : "Admin"}
+          {isAdmin ? "Exit Admin" : "Admin"}
         </button>
       </nav>
 
