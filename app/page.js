@@ -1,70 +1,42 @@
 "use client";
 
-import { useState } from "react";
-import { useAdmin } from "./context/AdminContext";
-
 export default function HomePage() {
-  const { isAdmin } = useAdmin();
-
-  const [latestGame, setLatestGame] = useState(
-    "Add your full team game summary here."
-  );
-  const [teamPerformance, setTeamPerformance] = useState(
-    "Add overall team performance notes here."
-  );
-  const [injuries, setInjuries] = useState(
-    "Add team injury updates here."
-  );
-  const [announcements, setAnnouncements] = useState(
-    "Add announcements here."
-  );
-
-  const [editingSection, setEditingSection] = useState(null);
-
-  const renderSection = (title, value, setValue, key) => (
-    <section style={{ marginTop: 30 }}>
-      <h2 style={{ display: "flex", alignItems: "center" }}>
-        {title}
-
-     {isAdmin && editingSection !== key && (
-          <button
-            onClick={() => setEditingSection(key)}
-            style={{ marginLeft: 15 }}
-          >
-            Edit
-          </button>
-        )}
-      </h2>
-
-      {editingSection === key ? (
-        <>
-          <textarea
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            rows={4}
-            style={{ width: "100%" }}
-          />
-          <button
-            onClick={() => setEditingSection(null)}
-            style={{ marginTop: 10 }}
-          >
-            Save
-          </button>
-        </>
-      ) : (
-        <p>{value}</p>
-      )}
-    </section>
-  );
-
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Game Summaries & Updates</h1>
+    <div
+      style={{
+        padding: 20,
+        background: "#0b4dbb",
+        color: "white",
+        minHeight: "100vh",
+      }}
+    >
+      <h1>Ryan's Basketball App</h1>
+      <h3>Crivitz 7th Grade Boys Basketball</h3>
+      <p>Welcome to the official team app.</p>
 
-      {renderSection("🏀 Latest Game Recap", latestGame, setLatestGame, "latest")}
-      {renderSection("📊 Team Performance", teamPerformance, setTeamPerformance, "performance")}
-      {renderSection("🚑 Injury Updates", injuries, setInjuries, "injuries")}
-      {renderSection("📢 Announcements", announcements, setAnnouncements, "announcements")}
+      <div
+        style={{
+          marginTop: 30,
+          padding: 20,
+          background: "#1a5fd0",
+          borderRadius: 8,
+        }}
+      >
+        <h4>Next Game</h4>
+        <p>Game schedule coming soon.</p>
+      </div>
+
+      <div
+        style={{
+          marginTop: 20,
+          padding: 20,
+          background: "#1a5fd0",
+          borderRadius: 8,
+        }}
+      >
+        <h4>Team Record</h4>
+        <p>0-0</p>
+      </div>
     </div>
   );
 }
