@@ -1,36 +1,30 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState } from "react";
 
-const AdminContext = createContext();
+const AdminContext = createContext({
+  isAdmin: false,
+  login: () => {},
+  logout: () => {},
+});
 
 export function AdminProvider({ children }) {
-  const [adminMode, setAdminMode] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => {
-    const storedAdmin = localStorage.getItem("adminMode");
-    if (storedAdmin === "true") {
-      setAdminMode(true);
-    }
-  }, []);
-
-  const toggleAdmin = () => {
-    if (!adminMode) {
-      const password = prompt("Enter admin password:");
-      if (password === "Harley123") {
-        setAdminMode(true);
-        localStorage.setItem("adminMode", "true");
-      } else {
-        alert("Incorrect password.");
-      }
+  const login = (password) => {
+    if (password === "coach123") {
+      setIsAdmin(true);
     } else {
-      setAdminMode(false);
-      localStorage.removeItem("adminMode");
+      alert("Wrong password");
     }
   };
 
+  const logout = () => {
+    setIsAdmin(false);
+  };
+
   return (
-    <AdminContext.Provider value={{ adminMode, toggleAdmin }}>
+    <AdminContext.Provider value={{ isAdmin, login, logout }}>
       {children}
     </AdminContext.Provider>
   );
