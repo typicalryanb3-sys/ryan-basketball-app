@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useAdmin } from "../../../context/AdminContext";
+import { db } from "../../../firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export default function PlayerSummariesPage({ params }) {
   const { number } = params;
@@ -10,23 +12,47 @@ export default function PlayerSummariesPage({ params }) {
   const [summary, setSummary] = useState("");
   const [injury, setInjury] = useState("");
   const [coachNotes, setCoachNotes] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedSummary = localStorage.getItem(`player-summary-${number}`);
-    const savedInjury = localStorage.getItem(`player-injury-${number}`);
-    const savedCoachNotes = localStorage.getItem(`player-coachNotes-${number}`);
+    async function loadSummary() {
+      try {
+        const docRef = doc(db, "playerSummaries", number);
+        const docSnap = await getDoc(docRef);
 
-    if (savedSummary) setSummary(savedSummary);
-    if (savedInjury) setInjury(savedInjury);
-    if (savedCoachNotes) setCoachNotes(savedCoachNotes);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setSummary(data.summary || "");
+          setInjury(data.injury || "");
+          setCoachNotes(data.coachNotes || "");
+        }
+      } catch (error) {
+        console.error("Error loading player summary:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadSummary();
   }, [number]);
 
-  const saveAll = () => {
-    localStorage.setItem(`player-summary-${number}`, summary);
-    localStorage.setItem(`player-injury-${number}`, injury);
-    localStorage.setItem(`player-coachNotes-${number}`, coachNotes);
-    alert("Player summary saved!");
+  const saveAll = async () => {
+    try {
+      await setDoc(doc(db, "playerSummaries", number), {
+        summary,
+        injury,
+        coachNotes,
+      });
+      alert("Player summary saved!");
+    } catch (error) {
+      console.error("Error saving player summary:", error);
+      alert("Failed to save player summary.");
+    }
   };
+
+  if (loading) {
+    return <div style={{ padding: 20 }}>Loading...</div>;
+  }
 
   return (
     <div style={{ padding: 20 }}>
