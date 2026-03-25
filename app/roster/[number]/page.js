@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useAdmin } from "../../context/AdminContext";
+import { db } from "../../firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 const players = [
   { name: "Brody Ludwig", number: 30, position: "PG" },
@@ -17,36 +18,64 @@ const players = [
   { name: "Karson Betka", number: 50, position: "C" },
   { name: "Ian Weiting", number: 51, position: "PG" },
   { name: "Ryan Bendtschneider", number: 44, position: "PF" },
-  { name: "Fritz Koeler", number: 31, position: "C" },
+  { name: "Fritz Koeler", number: 31, position: "C" }
 ];
 
 export default function PlayerPage({ params }) {
-  const { isAdmin } = useAdmin();
   const playerNumber = parseInt(params.number);
   const player = players.find((p) => p.number === playerNumber);
 
   const [stats, setStats] = useState({
     ppg: "",
     rpg: "",
-    apg: "",
+    apg: ""
   });
 
-  useEffect(() => {
-    if (!player) return;
+  const [summary, setSummary] = useState("");
+  const [injury, setInjury] = useState("");
+  const [loading, setLoading] = useState(true);
 
-    const savedStats = localStorage.getItem(`player-stats-${player.number}`);
-    if (savedStats) {
-      setStats(JSON.parse(savedStats));
+  useEffect(() => {
+    async function loadPlayerData() {
+      if (!player) return;
+
+      try {
+        const statsRef = doc(db, "playerStats", String(player.number));
+        const statsSnap = await getDoc(statsRef);
+
+        if (statsSnap.exists()) {
+          const statsData = statsSnap.data();
+          setStats({
+            ppg: statsData.ppg || "",
+            rpg: statsData.rpg || "",
+            apg: statsData.apg || ""
+          });
+        }
+
+        const summaryRef = doc(db, "playerSummaries", String(player.number));
+        const summarySnap = await getDoc(summaryRef);
+
+        if (summarySnap.exists()) {
+          const summaryData = summarySnap.data();
+          setSummary(summaryData.summary || "");
+          setInjury(summaryData.injury || "");
+        }
+      } catch (error) {
+        console.error("Error loading player data:", error);
+      } finally {
+        setLoading(false);
+      }
     }
-  }, [player]);
 
-  useEffect(() => {
-    if (!player) return;
-    localStorage.setItem(`player-stats-${player.number}`, JSON.stringify(stats));
-  }, [stats, player]);
+    loadPlayerData();
+  }, [player]);
 
   if (!player) {
     return <div style={{ padding: 20 }}>Player not found.</div>;
+  }
+
+  if (loading) {
+    return <div style={{ padding: 20 }}>Loading...</div>;
   }
 
   return (
@@ -60,46 +89,19 @@ export default function PlayerPage({ params }) {
 
       <div style={{ marginTop: 20 }}>
         <h3>Stats</h3>
+        <p>PPG: {stats.ppg || "N/A"}</p>
+        <p>RPG: {stats.rpg || "N/A"}</p>
+        <p>APG: {stats.apg || "N/A"}</p>
+      </div>
 
-        {isAdmin ? (
-          <>
-            <div style={{ marginBottom: 10 }}>
-              <label>PPG: </label>
-              <input
-                value={stats.ppg}
-                onChange={(e) =>
-                  setStats({ ...stats, ppg: e.target.value })
-                }
-              />
-            </div>
+      <div style={{ marginTop: 20 }}>
+        <h3>Latest Performance</h3>
+        <p>{summary || "No performance summary yet."}</p>
+      </div>
 
-            <div style={{ marginBottom: 10 }}>
-              <label>RPG: </label>
-              <input
-                value={stats.rpg}
-                onChange={(e) =>
-                  setStats({ ...stats, rpg: e.target.value })
-                }
-              />
-            </div>
-
-            <div style={{ marginBottom: 10 }}>
-              <label>APG: </label>
-              <input
-                value={stats.apg}
-                onChange={(e) =>
-                  setStats({ ...stats, apg: e.target.value })
-                }
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            <p>PPG: {stats.ppg || "N/A"}</p>
-            <p>RPG: {stats.rpg || "N/A"}</p>
-            <p>APG: {stats.apg || "N/A"}</p>
-          </>
-        )}
+      <div style={{ marginTop: 20 }}>
+        <h3>Injury Status</h3>
+        <p>{injury || "No injuries reported."}</p>
       </div>
     </div>
   );
