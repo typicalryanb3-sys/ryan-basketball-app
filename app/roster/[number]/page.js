@@ -1,11 +1,12 @@
+
 "use client";
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { db } from "../../firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 
-const players = [
+const defaultPlayers = [
   { name: "Brody Ludwig", number: 30, position: "PG" },
   { name: "Kaden Dorshner", number: 34, position: "SF" },
   { name: "Tripp Johnson", number: 23, position: "C" },
@@ -22,64 +23,104 @@ const players = [
 ];
 
 export default function PlayerPage({ params }) {
-  const playerNumber = parseInt(params.number);
-  const player = players.find((p) => p.number === playerNumber);
+  const playerNumber = Number(params.number);
 
+  const [player, setPlayer] = useState(null);
   const [stats, setStats] = useState({
     ppg: "",
     rpg: "",
     apg: ""
   });
-
   const [summary, setSummary] = useState("");
   const [injury, setInjury] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadPlayerData() {
+    setLoading(true);
+
+    const rosterRef = doc(db, "roster", "main");
+
+    const unsubscribe = onSnapshot(
+      rosterRef,
+      (snapshot) => {
+        const roster = snapshot.exists()
+          ? snapshot.data().players || []
+          : defaultPlayers;
+
+        const matchingPlayer = roster.find(
+          (p) => Number(p.number) === playerNumber
+        );
+
+        setPlayer(matchingPlayer || null);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Roster error:", err);
+        setError("Could not load player information.");
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [playerNumber]);
+
+  useEffect(() => {
+    async function loadProfile() {
       if (!player) return;
 
       try {
-        const statsRef = doc(db, "playerStats", String(player.number));
-        const statsSnap = await getDoc(statsRef);
+        const number = String(player.number);
 
-        if (statsSnap.exists()) {
-          const statsData = statsSnap.data();
-          setStats({
-            ppg: statsData.ppg || "",
-            rpg: statsData.rpg || "",
-            apg: statsData.apg || ""
-          });
-        }
+        const [statsSnap, summarySnap] = await Promise.all([
+          getDoc(doc(db, "playerStats", number)),
+          getDoc(doc(db, "playerSummaries", number))
+        ]);
 
-        const summaryRef = doc(db, "playerSummaries", String(player.number));
-        const summarySnap = await getDoc(summaryRef);
+        const statsData = statsSnap.exists()
+          ? statsSnap.data()
+          : {};
 
-        if (summarySnap.exists()) {
-          const summaryData = summarySnap.data();
-          setSummary(summaryData.summary || "");
-          setInjury(summaryData.injury || "");
-        }
-      } catch (error) {
-        console.error("Error loading player data:", error);
-      } finally {
-        setLoading(false);
+        const summaryData = summarySnap.exists()
+          ? summarySnap.data()
+          : {};
+
+        setStats({
+          ppg: statsData.ppg ?? "",
+          rpg: statsData.rpg ?? "",
+          apg: statsData.apg ?? ""
+        });
+
+        setSummary(summaryData.summary || "");
+        setInjury(summaryData.injury || "");
+      } catch (err) {
+        console.error("Player profile error:", err);
+        setError("Could not load player stats or summaries.");
       }
     }
 
-    loadPlayerData();
-  }, [player]);
-
-  if (!player) {
-    return <div style={{ padding: 20 }}>Player not found.</div>;
-  }
+    loadProfile();
+  }, [player?.number]);
 
   if (loading) {
-    return <div style={{ padding: 20 }}>Loading...</div>;
+    return <div style={{ padding: 20 }}>Loading player...</div>;
+  }
+
+  if (error) {
+    return <div style={{ padding: 20 }}>{error}</div>;
+  }
+
+  if (!player) {
+    return (
+      <div style={{ padding: 20 }}>
+        <Link href="/roster">← Back to Roster</Link>
+        <p>Player not found.</p>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: 20 }}>
+    <main style={{ padding: 20 }}>
       <Link href="/roster">← Back to Roster</Link>
 
       <h1>{player.name}</h1>
@@ -87,22 +128,22 @@ export default function PlayerPage({ params }) {
         #{player.number} • {player.position}
       </h2>
 
-      <div style={{ marginTop: 20 }}>
+      <section style={{ marginTop: 20 }}>
         <h3>Stats</h3>
-        <p>PPG: {stats.ppg || "N/A"}</p>
-        <p>RPG: {stats.rpg || "N/A"}</p>
-        <p>APG: {stats.apg || "N/A"}</p>
-      </div>
+        <p>PPG: {stats.ppg === "" ? "N/A" : stats.ppg}</p>
+        <p>RPG: {stats.rpg === "" ? "N/A" : stats.rpg}</p>
+        <p>APG: {stats.apg === "" ? "N/A" : stats.apg}</p>
+      </section>
 
-      <div style={{ marginTop: 20 }}>
+      <section style={{ marginTop: 20 }}>
         <h3>Latest Performance</h3>
         <p>{summary || "No performance summary yet."}</p>
-      </div>
+      </section>
 
-      <div style={{ marginTop: 20 }}>
+      <section style={{ marginTop: 20 }}>
         <h3>Injury Status</h3>
         <p>{injury || "No injuries reported."}</p>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
