@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -11,7 +12,7 @@ export default function PlayerSummariesPage({ params }) {
 
   const [summary, setSummary] = useState("");
   const [injury, setInjury] = useState("");
-  const [coachNotes, setCoachNotes] = useState("");
+  const [awards, setAwards] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,9 +23,12 @@ export default function PlayerSummariesPage({ params }) {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
+
           setSummary(data.summary || "");
           setInjury(data.injury || "");
-          setCoachNotes(data.coachNotes || "");
+
+          // Keep previously saved coach notes.
+          setAwards(data.awards ?? data.coachNotes ?? "");
         }
       } catch (error) {
         console.error("Error loading player summary:", error);
@@ -38,11 +42,16 @@ export default function PlayerSummariesPage({ params }) {
 
   const saveAll = async () => {
     try {
-      await setDoc(doc(db, "playerSummaries", number), {
-        summary,
-        injury,
-        coachNotes,
-      });
+      await setDoc(
+        doc(db, "playerSummaries", number),
+        {
+          summary,
+          injury,
+          awards,
+        },
+        { merge: true }
+      );
+
       alert("Player summary saved!");
     } catch (error) {
       console.error("Error saving player summary:", error);
@@ -90,17 +99,17 @@ export default function PlayerSummariesPage({ params }) {
       </section>
 
       <section style={{ marginTop: 20 }}>
-        <h3>Coach Notes</h3>
+        <h3>Awards given by Creator</h3>
         {isAdmin ? (
           <textarea
-            value={coachNotes}
-            onChange={(e) => setCoachNotes(e.target.value)}
+            value={awards}
+            onChange={(e) => setAwards(e.target.value)}
             rows={4}
             style={{ width: "100%" }}
-            placeholder="Add coach notes here"
+            placeholder="Add awards given by Creator here"
           />
         ) : (
-          <p>{coachNotes || "No coach notes yet."}</p>
+          <p>{awards || "No awards given yet."}</p>
         )}
       </section>
 
