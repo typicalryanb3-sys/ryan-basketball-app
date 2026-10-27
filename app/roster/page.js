@@ -6,8 +6,9 @@ import { useEffect, useState } from "react";
 import {
   doc,
   onSnapshot,
+  getDoc,
   setDoc,
-  getDoc
+  writeBatch
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAdmin } from "../context/AdminContext";
@@ -49,17 +50,15 @@ export default function Roster() {
   const { isAdmin } = useAdmin();
 
   const [players, setPlayers] = useState(initialPlayers);
-  const [draft, setDraft] = useState(initialPlayers);
+  const [draft, setDraft] = useState([]);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const ref = doc(db, "roster", "main");
-
     return onSnapshot(
-      ref,
+      doc(db, "roster", "main"),
       (snapshot) => {
         const saved = snapshot.data()?.players;
         setPlayers(Array.isArray(saved) ? saved : initialPlayers);
@@ -78,15 +77,23 @@ export default function Roster() {
   }, [isAdmin]);
 
   function startEditing() {
-    setDraft(players.map((player) => ({ ...player })));
+    setDraft(
+      players.map((player, index) => ({
+        ...player,
+        _key: `existing-${index}`,
+        _originalNumber: Number(player.number)
+      }))
+    );
     setError("");
     setEditing(true);
   }
 
-  function updatePlayer(index, field, value) {
+  function updatePlayer(key, field, value) {
     setDraft((previous) =>
-      previous.map((player, i) =>
-        i === index ? { ...player, [field]: value } : player
+      previous.map((player) =>
+        player._key === key
+          ? { ...player, [field]: value }
+          : player
       )
     );
   }
@@ -94,23 +101,37 @@ export default function Roster() {
   function addPlayer() {
     setDraft((previous) => [
       ...previous,
-      { name: "", number: "", position: "PG", group: "bench" }
+      {
+        _key: `new-${Date.now()}-${Math.random()}`,
+        _originalNumber: null,
+        name: "",
+        number: "",
+        position: "PG",
+        group: "bench"
+      }
     ]);
   }
 
-  function removePlayer(index) {
+  function removePlayer(key) {
     if (!window.confirm("Remove this player from the roster?")) return;
-    setDraft((previous) => previous.filter((_, i) => i !== index));
+
+    setDraft((previous) =>
+      previous.filter((player) => player._key !== key)
+    );
   }
 
   async function saveRoster() {
     setError("");
 
     const cleaned = draft.map((player) => ({
-      name: player.name.trim(),
-      number: Number(player.number),
-      position: player.position.trim().toUpperCase(),
-      group: player.group
+      name: String(player.name).trim(),
+      number:
+        String(player.number).trim() === ""
+          ? NaN
+          : Number(player.number),
+      position: String(player.position).trim().toUpperCase(),
+      group: player.group,
+      originalNumber: player._originalNumber
     }));
 
     if (
@@ -120,10 +141,11 @@ export default function Roster() {
           !Number.isInteger(player.number) ||
           player.number < 0 ||
           player.number > 99 ||
-          !player.position
+          !player.position ||
+          !["starter", "bench"].includes(player.group)
       )
     ) {
-      setError("Enter a name, valid jersey number (0–99), and position.");
+      setError("Enter a name, jersey number (0–99), and position.");
       return;
     }
 
@@ -134,7 +156,9 @@ export default function Roster() {
       return;
     }
 
-    if (cleaned.filter((player) => player.group === "starter").length > 5) {
+    if (
+      cleaned.filter((player) => player.group === "starter").length > 5
+    ) {
       setError("Only five players can be in the Starting 5.");
       return;
     }
@@ -142,38 +166,115 @@ export default function Roster() {
     setSaving(true);
 
     try {
-      // Prevent accidental disconnection of saved profiles.
-      for (const oldPlayer of players) {
-        const stillExists = cleaned.some(
-          (p) => p.number === Number(oldPlayer.number)
-        );
+      const changes = cleaned.filter(
+        (player) =>
+          player.originalNumber !== null &&
+          player.originalNumber !== player.number
+      );
 
-        if (!stillExists) {
-          const number = String(oldPlayer.number);
+      // Read every original document before writing anything.
+      // This supports jersey-number swaps.
+      const originalNumbers = new Set(
+        players.map((player) => String(player.number))
+      );
 
-          const [stats, summaries] = await Promise.all([
-            getDoc(doc(db, "playerStats", number)),
-            getDoc(doc(db, "playerSummaries", number))
-          ]);
+      const oldData = {};
 
-          if (stats.exists() || summaries.exists()) {
-            throw new Error(
-              `#${number} has saved stats or summaries. ` +
-              "Keep their jersey number for now; " +
-              "we'll add safe profile migration next."
-            );
-          }
+      for (const number of originalNumbers) {
+        const [stats, summaries] = await Promise.all([
+          getDoc(doc(db, "playerStats", number)),
+          getDoc(doc(db, "playerSummaries", number))
+        ]);
+
+        oldData[number] = {
+          stats: stats.exists() ? stats.data() : null,
+          summaries: summaries.exists() ? summaries.data() : null
+        };
+      }
+
+      const batch = writeBatch(db);
+
+      // Save backup copies of all existing profile records.
+      for (const number of originalNumbers) {
+        const record = oldData[number];
+
+        if (record.stats || record.summaries) {
+          batch.set(
+            doc(db, "rosterBackups", number),
+            {
+              stats: record.stats,
+              summaries: record.summaries,
+              backedUpAt: new Date().toISOString()
+            }
+          );
         }
       }
 
-      await setDoc(doc(db, "roster", "main"), {
-        players: cleaned
+      // Move profile records for changed jersey numbers.
+      // Existing numbers that are reassigned must not retain old data.
+      const changedNumbers = new Set(
+        changes.map((player) => String(player.number))
+      );
+
+      for (const player of changes) {
+        const source = oldData[String(player.originalNumber)];
+
+        if (source?.stats) {
+          batch.set(
+            doc(db, "playerStats", String(player.number)),
+            source.stats
+          );
+        } else {
+          batch.delete(doc(db, "playerStats", String(player.number)));
+        }
+
+        if (source?.summaries) {
+          batch.set(
+            doc(db, "playerSummaries", String(player.number)),
+            source.summaries
+          );
+        } else {
+          batch.delete(
+            doc(db, "playerSummaries", String(player.number))
+          );
+        }
+      }
+
+      // Clear old numbers only if no player uses them anymore.
+      const finalNumbers = new Set(
+        cleaned.map((player) => String(player.number))
+      );
+
+      for (const player of changes) {
+        const oldNumber = String(player.originalNumber);
+
+        if (
+          !finalNumbers.has(oldNumber) &&
+          !changedNumbers.has(oldNumber)
+        ) {
+          batch.delete(doc(db, "playerStats", oldNumber));
+          batch.delete(doc(db, "playerSummaries", oldNumber));
+        }
+      }
+
+      batch.set(doc(db, "roster", "main"), {
+        players: cleaned.map(
+          ({ name, number, position, group }) => ({
+            name,
+            number,
+            position,
+            group
+          })
+        )
       });
 
+      await batch.commit();
+
       setEditing(false);
+      alert("Roster saved successfully!");
     } catch (err) {
       console.error(err);
-      setError(err.message || "Could not save roster.");
+      setError(err.message || "Could not save the roster.");
     } finally {
       setSaving(false);
     }
@@ -216,9 +317,9 @@ export default function Roster() {
         <>
           <h2>Edit Players</h2>
 
-          {draft.map((player, index) => (
+          {draft.map((player) => (
             <div
-              key={index}
+              key={player._key}
               style={{
                 border: "1px solid #ccc",
                 padding: 15,
@@ -230,7 +331,8 @@ export default function Roster() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(130px, 1fr))",
                   gap: 10
                 }}
               >
@@ -240,7 +342,11 @@ export default function Roster() {
                     style={inputStyle}
                     value={player.name}
                     onChange={(e) =>
-                      updatePlayer(index, "name", e.target.value)
+                      updatePlayer(
+                        player._key,
+                        "name",
+                        e.target.value
+                      )
                     }
                   />
                 </label>
@@ -254,7 +360,11 @@ export default function Roster() {
                     max="99"
                     value={player.number}
                     onChange={(e) =>
-                      updatePlayer(index, "number", e.target.value)
+                      updatePlayer(
+                        player._key,
+                        "number",
+                        e.target.value
+                      )
                     }
                   />
                 </label>
@@ -265,7 +375,11 @@ export default function Roster() {
                     style={inputStyle}
                     value={player.position}
                     onChange={(e) =>
-                      updatePlayer(index, "position", e.target.value)
+                      updatePlayer(
+                        player._key,
+                        "position",
+                        e.target.value
+                      )
                     }
                   />
                 </label>
@@ -276,7 +390,11 @@ export default function Roster() {
                     style={inputStyle}
                     value={player.group}
                     onChange={(e) =>
-                      updatePlayer(index, "group", e.target.value)
+                      updatePlayer(
+                        player._key,
+                        "group",
+                        e.target.value
+                      )
                     }
                   >
                     <option value="starter">Starting 5</option>
@@ -286,7 +404,7 @@ export default function Roster() {
               </div>
 
               <button
-                onClick={() => removePlayer(index)}
+                onClick={() => removePlayer(player._key)}
                 style={{
                   ...buttonStyle,
                   background: "#dc3545",
